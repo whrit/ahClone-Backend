@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.db import engine, init_db
 from app.main import app
 from app.models import IntegrationAccount, Item, JobRun, Project, User
+from app.models.serp import KeywordTarget, RankObservation, SerpSnapshot
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
 
@@ -30,6 +31,13 @@ def db() -> Generator[Session, None, None]:
         yield session
         # Delete in order to respect foreign key constraints
         statement = delete(JobRun)
+        session.execute(statement)
+        # Delete SERP models
+        statement = delete(RankObservation)
+        session.execute(statement)
+        statement = delete(SerpSnapshot)
+        session.execute(statement)
+        statement = delete(KeywordTarget)
         session.execute(statement)
         statement = delete(Project)
         session.execute(statement)

@@ -25,6 +25,10 @@ class GSCBasedProvider(SerpProvider):
     from the last 7 days (days 3-10 ago to avoid incomplete recent data).
     """
 
+    provider_key = "gsc_based"
+    display_name = "Google Search Console (First-Party)"
+    is_compliant = True
+
     def __init__(self, session: Session | None = None):
         """
         Initialize GSC provider.
@@ -32,7 +36,7 @@ class GSCBasedProvider(SerpProvider):
         Args:
             session: SQLModel database session (required for this provider)
         """
-        super().__init__(session)
+        self.session = session
 
     async def fetch_serp(
         self,
@@ -207,4 +211,4 @@ class GSCBasedProvider(SerpProvider):
 
 
 # Register the GSC provider
-provider_registry.register("gsc_based", GSCBasedProvider)
+provider_registry.register(GSCBasedProvider)

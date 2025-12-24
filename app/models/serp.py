@@ -1,4 +1,3 @@
-from __future__ import annotations
 """
 SERP (Search Engine Results Page) tracking models.
 
@@ -12,10 +11,13 @@ Database tables:
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, DateTime
 from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from app.models.project import Project
 
 
 # ==================== Enums ====================
@@ -89,9 +91,18 @@ class KeywordTarget(SQLModel, table=True):
     position_change: int | None = Field(default=None)  # Change from previous observation
 
     # Timestamps
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    last_refresh_at: datetime | None = Field(default=None)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    last_refresh_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
     last_refresh_status: str | None = Field(default=None, max_length=50)
 
     # Relationships
@@ -121,7 +132,9 @@ class RankObservation(SQLModel, table=True):
         index=True,
         ondelete="CASCADE"
     )
-    observed_at: datetime = Field(index=True)  # When this observation was captured
+    observed_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, index=True)
+    )  # When this observation was captured
     rank: int  # Position in SERP (1-based)
     url: str | None = Field(default=None, max_length=2048)
     domain: str | None = Field(default=None, max_length=255)
@@ -149,7 +162,10 @@ class SerpSnapshot(SQLModel, table=True):
         index=True,
         ondelete="CASCADE"
     )
-    captured_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    captured_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
     results_json: dict[str, Any] = Field(sa_column=Column(JSON))  # Full organic results
     total_results: int | None = Field(default=None)  # Total number of results found
     raw_response: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))  # Raw API response

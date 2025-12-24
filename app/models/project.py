@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import uuid
 from datetime import datetime
@@ -94,12 +93,12 @@ class Project(ProjectBase, table=True):
     last_ppc_sync_at: datetime | None = Field(default=None)
 
     # Relationships
-    created_by: User = Relationship(back_populates="projects")
-    audit_runs: list[AuditRun] = Relationship(
+    created_by: "User" = Relationship(back_populates="projects")
+    audit_runs: list["AuditRun"] = Relationship(
         back_populates="project",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    gsc_property: GSCProperty | None = Relationship(
+    gsc_property: "GSCProperty" = Relationship(
         back_populates="project",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "uselist": False}
     )

@@ -12,7 +12,7 @@ Database tables:
 import uuid
 from datetime import datetime, timezone
 from datetime import date as date_type
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlmodel import Field, Relationship, SQLModel
 
