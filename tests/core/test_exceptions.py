@@ -355,22 +355,28 @@ def test_error_messages_are_user_friendly(client):
 
 
 def test_pydantic_validation_error_user_friendly(client):
-    """Test Pydantic validation errors are converted to user-friendly format."""
+    """Test Pydantic validation errors use standard FastAPI format.
+
+    Note: We intentionally do NOT override FastAPI's default validation error
+    handling to maintain backward compatibility with existing code that expects
+    the {"detail": [...]} format. Custom exceptions (SEOPlatformError and
+    subclasses) use the new {"error": {...}} format.
+    """
     response = client.post("/test/pydantic-validation", json={"name": "Test", "price": -10})
 
     assert response.status_code == 422
     data = response.json()
 
-    assert "error" in data
-    assert data["error"]["code"] == "VALIDATION_ERROR"
-    assert data["error"]["message"] == "Validation failed"
-    assert "errors" in data["error"]["details"]
+    # Standard FastAPI validation error format is {"detail": [...]}
+    assert "detail" in data
+    assert isinstance(data["detail"], list)
+    assert len(data["detail"]) > 0
 
-    # Should have user-friendly error format
-    errors = data["error"]["details"]["errors"]
-    assert len(errors) > 0
-    assert "field" in errors[0]
-    assert "message" in errors[0]
+    # Each error should have loc, msg, and type
+    error = data["detail"][0]
+    assert "loc" in error
+    assert "msg" in error
+    assert "type" in error
 
 
 # Test ErrorResponse class

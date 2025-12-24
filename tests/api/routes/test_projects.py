@@ -93,7 +93,10 @@ def test_get_project_not_found(
     )
     assert response.status_code == 404
     content = response.json()
-    assert content["detail"] == "Project not found"
+    # Custom exceptions use {"error": {...}} format
+    assert "error" in content
+    assert content["error"]["code"] == "NOT_FOUND"
+    assert "not found" in content["error"]["message"].lower()
 
 
 def test_update_project(
@@ -129,7 +132,10 @@ def test_update_project_not_found(
     )
     assert response.status_code == 404
     content = response.json()
-    assert content["detail"] == "Project not found"
+    # Custom exceptions use {"error": {...}} format
+    assert "error" in content
+    assert content["error"]["code"] == "NOT_FOUND"
+    assert "not found" in content["error"]["message"].lower()
 
 
 def test_delete_project(
@@ -156,7 +162,10 @@ def test_delete_project_not_found(
     )
     assert response.status_code == 404
     content = response.json()
-    assert content["detail"] == "Project not found"
+    # Custom exceptions use {"error": {...}} format
+    assert "error" in content
+    assert content["error"]["code"] == "NOT_FOUND"
+    assert "not found" in content["error"]["message"].lower()
 
 
 def test_project_authorization(
@@ -166,15 +175,16 @@ def test_project_authorization(
     db: Session
 ) -> None:
     """Test that users can only access their own projects."""
-    # Create a project as a normal user
+    # Create a project as a random user (different from normal_user)
     project = create_random_project(db)
 
-    # Try to access it with different user credentials
-    # Note: This assumes the random project is created with a different user
-    # We'll need to verify authorization logic in the actual implementation
+    # Try to access it with different user credentials (not the owner)
     response = client.get(
         f"{settings.API_V1_STR}/projects/{project.id}",
         headers=normal_user_token_headers,
     )
-    # This test will be refined once we implement the actual authorization logic
-    assert response.status_code in [200, 400, 404]
+    # Should return 403 Forbidden when accessing another user's project
+    assert response.status_code == 403
+    content = response.json()
+    assert "error" in content
+    assert content["error"]["code"] == "UNAUTHORIZED"

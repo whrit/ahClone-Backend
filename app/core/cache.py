@@ -150,12 +150,55 @@ def cached(ttl: int = 300, key_prefix: str = "") -> Callable:
 
             # Call function and cache result
             result = func(*args, **kwargs)
-            cache.set(key, result, ttl)
+
+            # Convert Pydantic models to dict for caching
+            if hasattr(result, "model_dump"):
+                cache_value = result.model_dump()
+            elif hasattr(result, "dict"):
+                cache_value = result.dict()
+            else:
+                cache_value = result
+
+            cache.set(key, cache_value, ttl)
             return result
 
         return wrapper
 
     return decorator
+
+
+def _make_serializable(obj: Any) -> Any:
+    """Convert an object to a serializable form for cache key generation
+
+    Args:
+        obj: Object to convert
+
+    Returns:
+        A JSON-serializable representation of the object
+    """
+    # Handle common non-serializable types
+    if obj is None:
+        return None
+    if isinstance(obj, (str, int, float, bool)):
+        return obj
+    if isinstance(obj, (list, tuple)):
+        return [_make_serializable(item) for item in obj]
+    if isinstance(obj, dict):
+        return {str(k): _make_serializable(v) for k, v in obj.items()}
+    # For UUIDs, convert to string
+    if hasattr(obj, "hex"):  # UUID-like objects
+        return str(obj)
+    # For database sessions, models, and other complex objects, use type name
+    # This ensures cache keys differ by type but not by instance
+    type_name = type(obj).__name__
+    if type_name in ("Session", "scoped_session"):
+        # Skip session objects entirely - they don't affect the result
+        return "__session__"
+    # For ORM models, try to get an ID
+    if hasattr(obj, "id"):
+        return f"{type_name}:{obj.id}"
+    # Fallback: use type name
+    return f"<{type_name}>"
 
 
 def _generate_cache_key(
@@ -180,10 +223,13 @@ def _generate_cache_key(
     sorted_kwargs = sorted(kwargs.items())
 
     # Create a tuple of all arguments for hashing
-    args_tuple = (args, tuple(sorted_kwargs))
+    # Make sure all values are serializable
+    serializable_args = _make_serializable(args)
+    serializable_kwargs = [(k, _make_serializable(v)) for k, v in sorted_kwargs]
+    args_tuple = (serializable_args, tuple(serializable_kwargs))
 
     # Generate hash of arguments
-    args_json = json.dumps(args_tuple, sort_keys=True)
+    args_json = json.dumps(args_tuple, sort_keys=True, default=str)
     args_hash = hashlib.md5(args_json.encode()).hexdigest()
 
     # Build cache key
