@@ -833,6 +833,111 @@ def test_generate_clusters_not_linked(
     assert "GSC property not found" in response.json()["detail"]
 
 
+# ==================== Test get_cluster_detail ====================
+
+
+def test_get_cluster_detail(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    project_with_gsc: Project,
+    keyword_clusters: list[KeywordCluster],
+    gsc_query_data: list[GSCQueryDaily],
+    db: Session,
+) -> None:
+    """Test retrieving detailed cluster information with members."""
+    # Get the first cluster
+    cluster = keyword_clusters[0]
+
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project_with_gsc.id}/gsc/clusters/{cluster.id}",
+        headers=normal_user_token_headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+
+    # Verify cluster-level fields
+    assert data["id"] == str(cluster.id)
+    assert data["project_id"] == str(project_with_gsc.id)
+    assert data["label"] == cluster.label
+    assert data["algorithm"] == cluster.algorithm
+    assert "created_at" in data
+    assert data["total_clicks"] == cluster.total_clicks
+    assert data["total_impressions"] == cluster.total_impressions
+    assert data["avg_position"] == cluster.avg_position
+    assert data["query_count"] == cluster.query_count
+
+    # Verify members array exists and has correct structure
+    assert "members" in data
+    assert isinstance(data["members"], list)
+    assert len(data["members"]) > 0
+
+    # Verify member fields including id and cluster_id
+    first_member = data["members"][0]
+    assert "id" in first_member
+    assert "cluster_id" in first_member
+    assert "query" in first_member
+    assert "weight" in first_member
+    assert "clicks" in first_member
+    assert "impressions" in first_member
+    assert "ctr" in first_member
+    assert "position" in first_member
+
+    # Verify member cluster_id matches cluster id
+    assert first_member["cluster_id"] == str(cluster.id)
+
+
+def test_get_cluster_detail_not_found(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    project_with_gsc: Project,
+) -> None:
+    """Test retrieving non-existent cluster returns 404."""
+    fake_cluster_id = uuid.uuid4()
+
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project_with_gsc.id}/gsc/clusters/{fake_cluster_id}",
+        headers=normal_user_token_headers,
+    )
+
+    assert response.status_code == 404
+    assert "Cluster not found" in response.json()["detail"]
+
+
+def test_get_cluster_detail_wrong_project(
+    client: TestClient,
+    normal_user_token_headers: dict[str, str],
+    db: Session,
+    normal_user: User,
+    keyword_clusters: list[KeywordCluster],
+) -> None:
+    """Test retrieving cluster from different project returns 404."""
+    # Create a different project for the same user
+    other_project = create_random_project(db, owner_id=normal_user.id)
+
+    # Create GSC property for the other project
+    gsc_property = GSCProperty(
+        project_id=other_project.id,
+        site_url="sc-domain:other.com",
+        permission_level="siteFullUser",
+        verified=True,
+        sync_status="completed",
+    )
+    db.add(gsc_property)
+    db.commit()
+
+    # Try to get cluster from first project using second project's ID
+    cluster = keyword_clusters[0]
+
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{other_project.id}/gsc/clusters/{cluster.id}",
+        headers=normal_user_token_headers,
+    )
+
+    assert response.status_code == 404
+    assert "Cluster not found" in response.json()["detail"]
+
+
 # ==================== Test Authorization ====================
 
 

@@ -297,6 +297,63 @@ def get_rank_history(
     return RankHistoryResponse(data=public_observations, count=len(public_observations))
 
 
+@router.get("/keywords/{keyword_id}/snapshots/latest", response_model=SerpSnapshotPublic)
+def get_latest_snapshot(
+    session: SessionDep,
+    current_user: CurrentUser,
+    project_id: uuid.UUID,
+    keyword_id: uuid.UUID,
+) -> SerpSnapshotPublic:
+    """
+    Get latest snapshot for a keyword.
+
+    Returns the most recent SERP snapshot ordered by captured_at.
+    """
+    # Verify project exists and user has access
+    get_project_or_404(session, project_id, current_user)
+
+    # Get keyword and verify it belongs to this project
+    keyword = session.get(KeywordTarget, keyword_id)
+    if not keyword or keyword.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Keyword not found")
+
+    # Get latest snapshot
+    statement = (
+        select(SerpSnapshot)
+        .where(SerpSnapshot.keyword_target_id == keyword_id)
+        .order_by(SerpSnapshot.captured_at.desc())
+        .limit(1)
+    )
+    snapshot = session.exec(statement).first()
+
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="No snapshots found for this keyword")
+
+    # Convert snapshot to public model
+    results = []
+    organic_results = snapshot.results_json.get("organic", [])
+
+    for result in organic_results:
+        results.append(
+            SerpResultPublic(
+                position=result.get("position", 0),
+                url=result.get("url", ""),
+                domain=result.get("domain", ""),
+                title=result.get("title", ""),
+                snippet=result.get("snippet", ""),
+                displayed_url=result.get("displayed_url"),
+            )
+        )
+
+    return SerpSnapshotPublic(
+        id=snapshot.id,
+        keyword_target_id=snapshot.keyword_target_id,
+        captured_at=snapshot.captured_at,
+        results=results,
+        total_results=snapshot.total_results,
+    )
+
+
 @router.get("/keywords/{keyword_id}/snapshots/{snapshot_id}", response_model=SerpSnapshotPublic)
 def get_serp_snapshot(
     session: SessionDep,
@@ -444,60 +501,3 @@ def list_keyword_snapshots(
         )
 
     return SerpSnapshotsPublic(data=public_snapshots, count=count)
-
-
-@router.get("/keywords/{keyword_id}/snapshots/latest", response_model=SerpSnapshotPublic)
-def get_latest_snapshot(
-    session: SessionDep,
-    current_user: CurrentUser,
-    project_id: uuid.UUID,
-    keyword_id: uuid.UUID,
-) -> SerpSnapshotPublic:
-    """
-    Get latest snapshot for a keyword.
-
-    Returns the most recent SERP snapshot ordered by captured_at.
-    """
-    # Verify project exists and user has access
-    get_project_or_404(session, project_id, current_user)
-
-    # Get keyword and verify it belongs to this project
-    keyword = session.get(KeywordTarget, keyword_id)
-    if not keyword or keyword.project_id != project_id:
-        raise HTTPException(status_code=404, detail="Keyword not found")
-
-    # Get latest snapshot
-    statement = (
-        select(SerpSnapshot)
-        .where(SerpSnapshot.keyword_target_id == keyword_id)
-        .order_by(SerpSnapshot.captured_at.desc())
-        .limit(1)
-    )
-    snapshot = session.exec(statement).first()
-
-    if not snapshot:
-        raise HTTPException(status_code=404, detail="No snapshots found for this keyword")
-
-    # Convert snapshot to public model
-    results = []
-    organic_results = snapshot.results_json.get("organic", [])
-
-    for result in organic_results:
-        results.append(
-            SerpResultPublic(
-                position=result.get("position", 0),
-                url=result.get("url", ""),
-                domain=result.get("domain", ""),
-                title=result.get("title", ""),
-                snippet=result.get("snippet", ""),
-                displayed_url=result.get("displayed_url"),
-            )
-        )
-
-    return SerpSnapshotPublic(
-        id=snapshot.id,
-        keyword_target_id=snapshot.keyword_target_id,
-        captured_at=snapshot.captured_at,
-        results=results,
-        total_results=snapshot.total_results,
-    )

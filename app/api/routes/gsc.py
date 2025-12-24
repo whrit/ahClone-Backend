@@ -857,6 +857,8 @@ def get_cluster_detail(
 
         # Build member public model
         member_public = ClusterMemberPublic(
+            id=member.id,
+            cluster_id=member.cluster_id,
             query=member.query,
             weight=member.weight,
             clicks=int(result[0]) if result and result[0] is not None else 0,

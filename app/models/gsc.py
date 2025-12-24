@@ -241,6 +241,8 @@ class ClusterPublic(SQLModel):
 
 class ClusterMemberPublic(SQLModel):
     """Public schema for a cluster member query with metrics."""
+    id: uuid.UUID
+    cluster_id: uuid.UUID
     query: str
     weight: float
     clicks: int

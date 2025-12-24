@@ -581,3 +581,251 @@ def test_unauthorized_access(
         headers=normal_user_token_headers,
     )
     assert response.status_code in [400, 403, 404]
+
+
+def test_get_keyword(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session, normal_user: User
+) -> None:
+    """Test getting single keyword details."""
+    project = create_random_project(db, owner_id=normal_user.id)
+
+    keyword = KeywordTarget(
+        project_id=project.id,
+        keyword="test keyword",
+        locale="en-US",
+        device=DeviceType.DESKTOP,
+        search_engine=SearchEngine.GOOGLE,
+        provider_key="gsc_based",
+        refresh_frequency_hours=24,
+        latest_position=5,
+    )
+    db.add(keyword)
+    db.commit()
+    db.refresh(keyword)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project.id}/serp/keywords/{keyword.id}",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 200
+    content = response.json()
+    assert content["id"] == str(keyword.id)
+    assert content["keyword"] == "test keyword"
+    assert content["locale"] == "en-US"
+    assert content["device"] == DeviceType.DESKTOP
+    assert content["search_engine"] == SearchEngine.GOOGLE
+    assert content["provider_key"] == "gsc_based"
+    assert content["refresh_frequency_hours"] == 24
+    assert content["latest_position"] == 5
+    assert content["project_id"] == str(project.id)
+
+
+def test_get_keyword_not_found(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session, normal_user: User
+) -> None:
+    """Test getting non-existent keyword returns 404."""
+    project = create_random_project(db, owner_id=normal_user.id)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project.id}/serp/keywords/{uuid.uuid4()}",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 404
+
+
+def test_list_keyword_snapshots(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session, normal_user: User
+) -> None:
+    """Test listing snapshots for a keyword with pagination."""
+    project = create_random_project(db, owner_id=normal_user.id)
+
+    keyword = KeywordTarget(
+        project_id=project.id,
+        keyword="test keyword",
+        locale="en-US",
+        device=DeviceType.DESKTOP,
+    )
+    db.add(keyword)
+    db.commit()
+    db.refresh(keyword)
+
+    # Create multiple snapshots
+    for i in range(5):
+        snapshot = SerpSnapshot(
+            keyword_target_id=keyword.id,
+            results_json={
+                "organic": [
+                    {
+                        "position": i + 1,
+                        "url": f"https://example.com/page{i}",
+                        "domain": "example.com",
+                        "title": f"Example Page {i}",
+                        "snippet": f"This is example page {i}",
+                    }
+                ]
+            },
+            total_results=1000000,
+        )
+        db.add(snapshot)
+    db.commit()
+
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project.id}/serp/keywords/{keyword.id}/snapshots",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 200
+    content = response.json()
+    assert "data" in content
+    assert "count" in content
+    assert content["count"] >= 5
+    assert isinstance(content["data"], list)
+    # Verify snapshots are ordered by captured_at descending (newest first)
+    if len(content["data"]) > 1:
+        for i in range(len(content["data"]) - 1):
+            assert content["data"][i]["captured_at"] >= content["data"][i + 1]["captured_at"]
+
+
+def test_list_keyword_snapshots_with_pagination(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session, normal_user: User
+) -> None:
+    """Test listing snapshots with skip and limit parameters."""
+    project = create_random_project(db, owner_id=normal_user.id)
+
+    keyword = KeywordTarget(
+        project_id=project.id,
+        keyword="test keyword",
+        locale="en-US",
+        device=DeviceType.DESKTOP,
+    )
+    db.add(keyword)
+    db.commit()
+    db.refresh(keyword)
+
+    # Create multiple snapshots
+    for i in range(10):
+        snapshot = SerpSnapshot(
+            keyword_target_id=keyword.id,
+            results_json={"organic": []},
+            total_results=1000000,
+        )
+        db.add(snapshot)
+    db.commit()
+
+    # Test with limit
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project.id}/serp/keywords/{keyword.id}/snapshots?limit=5",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 200
+    content = response.json()
+    assert len(content["data"]) == 5
+
+    # Test with skip
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project.id}/serp/keywords/{keyword.id}/snapshots?skip=5&limit=5",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 200
+    content = response.json()
+    assert len(content["data"]) == 5
+
+
+def test_list_keyword_snapshots_not_found(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session, normal_user: User
+) -> None:
+    """Test listing snapshots for non-existent keyword returns 404."""
+    project = create_random_project(db, owner_id=normal_user.id)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project.id}/serp/keywords/{uuid.uuid4()}/snapshots",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 404
+
+
+def test_get_latest_snapshot(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session, normal_user: User
+) -> None:
+    """Test getting latest snapshot for a keyword."""
+    project = create_random_project(db, owner_id=normal_user.id)
+
+    keyword = KeywordTarget(
+        project_id=project.id,
+        keyword="test keyword",
+        locale="en-US",
+        device=DeviceType.DESKTOP,
+    )
+    db.add(keyword)
+    db.commit()
+    db.refresh(keyword)
+
+    # Create multiple snapshots
+    for i in range(3):
+        snapshot = SerpSnapshot(
+            keyword_target_id=keyword.id,
+            results_json={
+                "organic": [
+                    {
+                        "position": i + 1,
+                        "url": f"https://example.com/page{i}",
+                        "domain": "example.com",
+                        "title": f"Example Page {i}",
+                        "snippet": f"This is example page {i}",
+                    }
+                ]
+            },
+            total_results=1000000,
+        )
+        db.add(snapshot)
+        db.commit()
+        db.refresh(snapshot)
+
+    # Get latest snapshot (should be the most recent one)
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project.id}/serp/keywords/{keyword.id}/snapshots/latest",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 200
+    content = response.json()
+    assert content["keyword_target_id"] == str(keyword.id)
+    assert "results" in content
+    assert len(content["results"]) >= 1
+    assert content["total_results"] == 1000000
+
+
+def test_get_latest_snapshot_not_found(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session, normal_user: User
+) -> None:
+    """Test getting latest snapshot when no snapshots exist returns 404."""
+    project = create_random_project(db, owner_id=normal_user.id)
+
+    keyword = KeywordTarget(
+        project_id=project.id,
+        keyword="test keyword",
+        locale="en-US",
+        device=DeviceType.DESKTOP,
+    )
+    db.add(keyword)
+    db.commit()
+    db.refresh(keyword)
+
+    # No snapshots created, should return 404
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project.id}/serp/keywords/{keyword.id}/snapshots/latest",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 404
+    assert "No snapshots found" in response.json()["detail"]
+
+
+def test_get_latest_snapshot_keyword_not_found(
+    client: TestClient, normal_user_token_headers: dict[str, str], db: Session, normal_user: User
+) -> None:
+    """Test getting latest snapshot for non-existent keyword returns 404."""
+    project = create_random_project(db, owner_id=normal_user.id)
+
+    response = client.get(
+        f"{settings.API_V1_STR}/projects/{project.id}/serp/keywords/{uuid.uuid4()}/snapshots/latest",
+        headers=normal_user_token_headers,
+    )
+    assert response.status_code == 404
