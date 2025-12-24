@@ -13,12 +13,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
-from app.core.rate_limit import limiter
+from app.core.rate_limit import limiter, _enable_rate_limiting
 
 # Skip all rate limiting tests when rate limiting is disabled
 # Rate limiting is disabled during normal test runs to prevent test interference
+# Use RATE_LIMIT_TESTING=1 environment variable to run these tests
 pytestmark = pytest.mark.skipif(
-    not limiter.enabled,
+    not _enable_rate_limiting,
     reason="Rate limiting is disabled during tests. Run with RATE_LIMIT_TESTING=1 to enable."
 )
 

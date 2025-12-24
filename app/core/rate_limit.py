@@ -1,5 +1,6 @@
 """Rate limiting configuration using slowapi"""
 import os
+import sys
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -26,8 +27,17 @@ def get_identifier(request: Request) -> str:
     return get_remote_address(request)
 
 
-# Check if we're running tests (pytest sets this, or we can check for testclient)
-_is_testing = os.environ.get("PYTEST_CURRENT_TEST") is not None
+# Check if we're running tests
+# Use multiple detection methods for reliability:
+# 1. pytest in sys.modules - set when pytest is imported (reliable during collection)
+# 2. PYTEST_CURRENT_TEST - set during test execution
+# 3. RATE_LIMIT_TESTING=1 - manual override to enable rate limiting in tests
+_is_testing = (
+    "pytest" in sys.modules
+    or os.environ.get("PYTEST_CURRENT_TEST") is not None
+)
+# Allow manual override to enable rate limiting during specific tests
+_enable_rate_limiting = os.environ.get("RATE_LIMIT_TESTING") == "1"
 
 # Use very high limits during tests to avoid rate limiting issues
 _default_limit = "10000/minute" if _is_testing else "100/minute"
@@ -37,7 +47,7 @@ limiter = Limiter(
     default_limits=[_default_limit],
     storage_uri="memory://",  # Use Redis in production: "redis://localhost:6379"
     headers_enabled=True,  # Enable rate limit headers in responses
-    enabled=not _is_testing,  # Disable rate limiting during tests
+    enabled=_enable_rate_limiting if _is_testing else True,  # Disable rate limiting during tests unless explicitly enabled
 )
 
 
