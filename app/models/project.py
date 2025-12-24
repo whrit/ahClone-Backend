@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import HttpUrl, field_validator
 from sqlalchemy import JSON, Column
@@ -9,6 +9,7 @@ from sqlmodel import Field, Relationship, SQLModel
 if TYPE_CHECKING:
     from app.models import User
     from app.models.audit import AuditRun
+    from app.models.gsc import GSCProperty
 
 
 # ProjectSettings - embedded settings (stored as JSON in the database)
@@ -94,6 +95,10 @@ class Project(ProjectBase, table=True):
     audit_runs: list["AuditRun"] = Relationship(
         back_populates="project",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    gsc_property: Optional["GSCProperty"] = Relationship(
+        back_populates="project",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "uselist": False}
     )
 
 

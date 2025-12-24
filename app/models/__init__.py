@@ -153,6 +153,28 @@ from app.models.audit import (  # noqa: E402
     IssueType,
 )
 
+# Import GSC models
+from app.models.gsc import (  # noqa: E402
+    ClusterPublic,
+    GSCPageDaily,
+    GSCPageRow,
+    GSCPagesResponse,
+    GSCProperty,
+    GSCPropertyPublic,
+    GSCQueriesResponse,
+    GSCQueryDaily,
+    GSCQueryRow,
+    KeywordCluster,
+    KeywordClusterMember,
+    OpportunitiesResponse,
+    OpportunityRow,
+)
+
+# Import Integration models
+from app.models.integration import (  # noqa: E402
+    IntegrationAccount,
+)
+
 
 __all__ = [
     "User",
@@ -201,5 +223,19 @@ __all__ = [
     "IssueType",
     "IssueSeverity",
     "ISSUE_SEVERITY_MAP",
+    "GSCProperty",
+    "GSCPropertyPublic",
+    "GSCQueryDaily",
+    "GSCPageDaily",
+    "GSCQueryRow",
+    "GSCQueriesResponse",
+    "GSCPageRow",
+    "GSCPagesResponse",
+    "OpportunityRow",
+    "OpportunitiesResponse",
+    "KeywordCluster",
+    "KeywordClusterMember",
+    "ClusterPublic",
+    "IntegrationAccount",
     "SQLModel",
 ]

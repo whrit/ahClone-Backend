@@ -1,6 +1,7 @@
 from collections.abc import Generator
 
 import pytest
+from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 from sqlmodel import Session, delete
 
@@ -8,9 +9,18 @@ from app import crud
 from app.core.config import settings
 from app.core.db import engine, init_db
 from app.main import app
-from app.models import Item, JobRun, Project, User
+from app.models import IntegrationAccount, Item, JobRun, Project, User
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_encryption_key() -> Generator[None, None, None]:
+    """Set TOKEN_ENCRYPTION_KEY for tests if not already set"""
+    if not settings.TOKEN_ENCRYPTION_KEY:
+        # Generate a test encryption key
+        settings.TOKEN_ENCRYPTION_KEY = Fernet.generate_key().decode()
+    yield
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -22,6 +32,8 @@ def db() -> Generator[Session, None, None]:
         statement = delete(JobRun)
         session.execute(statement)
         statement = delete(Project)
+        session.execute(statement)
+        statement = delete(IntegrationAccount)
         session.execute(statement)
         statement = delete(Item)
         session.execute(statement)
