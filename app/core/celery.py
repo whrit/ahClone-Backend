@@ -68,6 +68,10 @@ def create_celery_app() -> Celery:
                 "task": "app.tasks.maintenance.cleanup_old_data",
                 "schedule": crontab(hour=5, minute=0),  # 5:00 AM daily
             },
+            "vacuum-database": {
+                "task": "app.tasks.maintenance.vacuum_database",
+                "schedule": crontab(hour=6, minute=0, day_of_week=0),  # 6:00 AM on Sundays
+            },
             "audit-weekly": {
                 "task": "app.tasks.audit.weekly_audit",
                 "schedule": crontab(hour=1, minute=0, day_of_week=0),  # 1:00 AM on Sundays

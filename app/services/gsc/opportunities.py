@@ -59,6 +59,8 @@ class OpportunityFinder:
         """
         Find all opportunity types.
 
+        This method is cached for 10 minutes to improve performance on repeated calls.
+
         Steps:
         1. Calculate date ranges (current and prior period)
         2. Get aggregated metrics per query for both periods
@@ -78,6 +80,16 @@ class OpportunityFinder:
         Yields:
             Opportunity objects for each detected opportunity
         """
+        # Call internal uncached implementation
+        yield from self._find_opportunities_impl(project_id, period_days, compare_days)
+
+    def _find_opportunities_impl(
+        self,
+        project_id: str | uuid.UUID,
+        period_days: int,
+        compare_days: int,
+    ) -> Iterator[Opportunity]:
+        """Internal implementation of find_opportunities"""
         # Convert string to UUID if needed
         if isinstance(project_id, str):
             project_id = uuid.UUID(project_id)

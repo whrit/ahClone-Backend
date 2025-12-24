@@ -4,11 +4,13 @@ import io
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from sqlmodel import desc, func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.rate_limit import limiter, strict_limit
+from app.core.exceptions import NotFoundError, AuthorizationError
 from app.models import Project, User
 from app.models.audit import (
     AuditIssue,
@@ -33,7 +35,7 @@ def get_project_or_404(
     session: SessionDep, project_id: uuid.UUID, current_user: User
 ) -> Project:
     """
-    Get project by ID, check ownership, and raise appropriate HTTP exceptions.
+    Get project by ID, check ownership, and raise appropriate exceptions.
 
     Args:
         session: Database session
@@ -44,19 +46,25 @@ def get_project_or_404(
         Project instance
 
     Raises:
-        HTTPException: 404 if project not found, 400 if user doesn't have permission
+        NotFoundError: If project not found
+        AuthorizationError: If user doesn't have permission
     """
     project = session.get(Project, project_id)
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise NotFoundError("Project", str(project_id))
     if not current_user.is_superuser and (project.created_by_id != current_user.id):
-        raise HTTPException(status_code=400, detail="Not enough permissions")
+        raise AuthorizationError("access this project")
     return project
 
 
 @router.post("/projects/{project_id}/audits/", response_model=AuditRunPublic)
+@limiter.limit(strict_limit())
 def start_audit(
-    session: SessionDep, current_user: CurrentUser, project_id: uuid.UUID
+    request: Request,
+    response: Response,
+    session: SessionDep,
+    current_user: CurrentUser,
+    project_id: uuid.UUID,
 ) -> Any:
     """
     Create new audit run and queue it for execution.
@@ -149,7 +157,7 @@ def get_audit(
 
     audit_run = session.get(AuditRun, audit_id)
     if not audit_run or audit_run.project_id != project_id:
-        raise HTTPException(status_code=404, detail="Audit run not found")
+        raise NotFoundError("Audit run", str(audit_id))
 
     return audit_run
 
@@ -179,7 +187,7 @@ def get_audit_issues(
     # Verify audit run exists and belongs to project
     audit_run = session.get(AuditRun, audit_id)
     if not audit_run or audit_run.project_id != project_id:
-        raise HTTPException(status_code=404, detail="Audit run not found")
+        raise NotFoundError("Audit run", str(audit_id))
 
     # Build base query
     statement = select(AuditIssue).where(AuditIssue.audit_run_id == audit_id)
@@ -227,7 +235,7 @@ def get_audit_pages(
     # Verify audit run exists and belongs to project
     audit_run = session.get(AuditRun, audit_id)
     if not audit_run or audit_run.project_id != project_id:
-        raise HTTPException(status_code=404, detail="Audit run not found")
+        raise NotFoundError("Audit run", str(audit_id))
 
     # Build base query
     statement = select(CrawledPage).where(CrawledPage.audit_run_id == audit_id)
@@ -266,12 +274,12 @@ def get_page_detail(
     # Verify audit run exists and belongs to project
     audit_run = session.get(AuditRun, audit_id)
     if not audit_run or audit_run.project_id != project_id:
-        raise HTTPException(status_code=404, detail="Audit run not found")
+        raise NotFoundError("Audit run", str(audit_id))
 
     # Get page
     page = session.get(CrawledPage, page_id)
     if not page or page.audit_run_id != audit_id:
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise NotFoundError("Page", str(page_id))
 
     return page
 
@@ -297,7 +305,7 @@ def export_issues_csv(
     # Verify audit run exists and belongs to project
     audit_run = session.get(AuditRun, audit_id)
     if not audit_run or audit_run.project_id != project_id:
-        raise HTTPException(status_code=404, detail="Audit run not found")
+        raise NotFoundError("Audit run", str(audit_id))
 
     # Build query with same filters as get_audit_issues
     statement = select(AuditIssue).where(AuditIssue.audit_run_id == audit_id)

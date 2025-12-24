@@ -116,6 +116,14 @@ class Settings(BaseSettings):
     MAX_KEYWORDS_PER_PROJECT: int = 500
     SERP_REFRESH_DAILY_CAP: int = 100
 
+    # Retention settings (days)
+    RETENTION_JOB_RUNS: int = 7
+    RETENTION_SERP_SNAPSHOTS: int = 90
+    RETENTION_AUDIT_RUNS: int = 30
+    RETENTION_LINK_SNAPSHOTS: int = 60
+    RETENTION_GSC_DAILY: int = 365
+    RETENTION_ADS_DAILY: int = 365
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = (

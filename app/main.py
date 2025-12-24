@@ -1,10 +1,15 @@
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.main import api_router
 from app.core.config import settings
+from app.core.rate_limit import limiter
+from app.core.exception_handlers import register_exception_handlers
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -20,6 +25,13 @@ app = FastAPI(
     generate_unique_id_function=custom_generate_unique_id,
 )
 
+# Register exception handlers for unified error handling
+register_exception_handlers(app)
+
+# Add rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Set all CORS enabled origins
 if settings.all_cors_origins:
     app.add_middleware(
@@ -29,5 +41,8 @@ if settings.all_cors_origins:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+# Add SlowAPI middleware to inject rate limit headers
+app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(api_router, prefix=settings.API_V1_STR)

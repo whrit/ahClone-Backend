@@ -29,6 +29,7 @@ dependencies = [
     "cryptography>=46.0.3",
     "warcio>=1.7.5",
     "google-ads>=28.4.1",
+    "slowapi>=0.1.9",
 ]
 
 [dependency-groups]
@@ -41,6 +42,7 @@ dev = [
     "coverage<8.0.0,>=7.4.3",
     "respx<1.0.0,>=0.21.0",
     "pytest-asyncio<1.0.0,>=0.23.0",
+    "fakeredis>=2.33.0",
 ]
 
 [build-system]

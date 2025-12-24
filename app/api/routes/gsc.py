@@ -3,13 +3,15 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import desc as sql_desc
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.cache import cached, invalidate_gsc_cache
 from app.core.oauth.google import GoogleOAuthClient
+from app.core.rate_limit import limiter, strict_limit
 from app.models.gsc import (
     ClusterPublic,
     GSCPageDaily,
@@ -311,7 +313,10 @@ def unlink_property(
 
 
 @router.post("/sync", response_model=TaskResponse)
+@limiter.limit(strict_limit())
 def trigger_sync(
+    request: Request,
+    response: Response,
     session: SessionDep,
     current_user: CurrentUser,
     project_id: uuid.UUID,
@@ -345,7 +350,10 @@ def trigger_sync(
 
 
 @router.post("/backfill", response_model=BackfillTaskResponse)
+@limiter.limit(strict_limit())
 def trigger_backfill(
+    request: Request,
+    response: Response,
     session: SessionDep,
     current_user: CurrentUser,
     project_id: uuid.UUID,
@@ -397,6 +405,7 @@ def get_queries(
     Get query explorer data with aggregation.
 
     Returns aggregated query performance data for the specified period.
+    Results are cached for 5 minutes to improve performance.
 
     Args:
         session: Database session
@@ -414,6 +423,29 @@ def get_queries(
     """
     # Verify user has access to project
     get_project_or_404(session, project_id, current_user)
+
+    # Use helper function to enable caching
+    return _get_queries_cached(
+        session, project_id, skip, limit, search, sort_by, sort_order, period_days
+    )
+
+
+@cached(ttl=300, key_prefix="gsc:queries")
+def _get_queries_cached(
+    session: SessionDep,
+    project_id: uuid.UUID,
+    skip: int,
+    limit: int,
+    search: str | None,
+    sort_by: str,
+    sort_order: str,
+    period_days: int,
+) -> GSCQueriesResponse:
+    """
+    Cached implementation of get_queries.
+
+    This function is cached separately to avoid caching authentication/authorization.
+    """
 
     # Calculate date range
     end_date = date.today() - timedelta(days=3)  # GSC data has ~3 day delay
@@ -719,7 +751,10 @@ def get_clusters(
 
 
 @router.post("/clusters/generate", response_model=TaskResponse)
+@limiter.limit(strict_limit())
 def generate_clusters(
+    request: Request,
+    response: Response,
     session: SessionDep,
     current_user: CurrentUser,
     project_id: uuid.UUID,

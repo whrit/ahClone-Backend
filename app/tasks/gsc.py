@@ -16,6 +16,7 @@ from typing import Any
 from celery import shared_task
 from sqlmodel import Session, select
 
+from app.core.cache import invalidate_gsc_cache
 from app.core.db import engine
 from app.core.oauth.google import GoogleOAuthClient
 from app.models.gsc import GSCProperty
@@ -127,7 +128,10 @@ def sync_gsc_property(self, project_id: str) -> dict[str, Any]:  # type: ignore[
             session.add(project)
             session.commit()
 
-            # Step 7: Return results
+            # Step 7: Invalidate cache for this project
+            invalidate_gsc_cache(project_id)
+
+            # Step 8: Return results
             return {
                 "queries": queries_count,
                 "pages": pages_count
@@ -230,6 +234,9 @@ def backfill_gsc_data(self, project_id: str, days: int = 90) -> dict[str, Any]: 
             session.add(gsc_property)
             session.add(project)
             session.commit()
+
+            # Invalidate cache for this project
+            invalidate_gsc_cache(project_id)
 
             return result
 

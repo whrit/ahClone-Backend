@@ -15,6 +15,7 @@ from app.models import (
     ProjectUpdate,
 )
 from app import crud
+from app.core.exceptions import NotFoundError, AuthorizationError
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -56,9 +57,9 @@ def read_project(session: SessionDep, current_user: CurrentUser, id: uuid.UUID) 
     """
     project = session.get(Project, id)
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise NotFoundError("Project", str(id))
     if not current_user.is_superuser and (project.created_by_id != current_user.id):
-        raise HTTPException(status_code=400, detail="Not enough permissions")
+        raise AuthorizationError("access this project")
     return project
 
 
@@ -88,9 +89,9 @@ def update_project(
     """
     project = session.get(Project, id)
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise NotFoundError("Project", str(id))
     if not current_user.is_superuser and (project.created_by_id != current_user.id):
-        raise HTTPException(status_code=400, detail="Not enough permissions")
+        raise AuthorizationError("update this project")
 
     update_dict = project_in.model_dump(exclude_unset=True)
     # Update timestamp
@@ -116,9 +117,9 @@ def delete_project(
     """
     project = session.get(Project, id)
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise NotFoundError("Project", str(id))
     if not current_user.is_superuser and (project.created_by_id != current_user.id):
-        raise HTTPException(status_code=400, detail="Not enough permissions")
+        raise AuthorizationError("delete this project")
     session.delete(project)
     session.commit()
     return Message(message="Project deleted successfully")
