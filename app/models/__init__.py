@@ -133,6 +133,26 @@ from app.models.job import (  # noqa: E402
     JobType,
 )
 
+# Import Audit models
+from app.models.audit import (  # noqa: E402
+    AuditIssue,
+    AuditIssuePublic,
+    AuditIssuesPublic,
+    AuditLinkEdge,
+    AuditRun,
+    AuditRunConfig,
+    AuditRunPublic,
+    AuditRunsPublic,
+    AuditRunStats,
+    AuditStatus,
+    CrawledPage,
+    CrawledPagePublic,
+    CrawledPagesPublic,
+    ISSUE_SEVERITY_MAP,
+    IssueSeverity,
+    IssueType,
+)
+
 
 __all__ = [
     "User",
@@ -165,5 +185,21 @@ __all__ = [
     "JobStatusResponse",
     "JobsPublic",
     "JobType",
+    "AuditRun",
+    "AuditRunConfig",
+    "AuditRunStats",
+    "AuditRunPublic",
+    "AuditRunsPublic",
+    "AuditStatus",
+    "CrawledPage",
+    "CrawledPagePublic",
+    "CrawledPagesPublic",
+    "AuditIssue",
+    "AuditIssuePublic",
+    "AuditIssuesPublic",
+    "AuditLinkEdge",
+    "IssueType",
+    "IssueSeverity",
+    "ISSUE_SEVERITY_MAP",
     "SQLModel",
 ]

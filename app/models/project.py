@@ -8,6 +8,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from app.models import User
+    from app.models.audit import AuditRun
 
 
 # ProjectSettings - embedded settings (stored as JSON in the database)
@@ -90,6 +91,10 @@ class Project(ProjectBase, table=True):
 
     # Relationships
     created_by: "User" = Relationship(back_populates="projects")
+    audit_runs: list["AuditRun"] = Relationship(
+        back_populates="project",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 # Properties to return via API, id is always required
