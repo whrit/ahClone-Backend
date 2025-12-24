@@ -4,7 +4,16 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
-from app.models import Item, ItemCreate, User, UserCreate, UserUpdate
+from app.models import (
+    Item,
+    ItemCreate,
+    Project,
+    ProjectCreate,
+    ProjectSettings,
+    User,
+    UserCreate,
+    UserUpdate,
+)
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
@@ -52,3 +61,22 @@ def create_item(*, session: Session, item_in: ItemCreate, owner_id: uuid.UUID) -
     session.commit()
     session.refresh(db_item)
     return db_item
+
+
+def create_project(*, session: Session, project_in: ProjectCreate, owner_id: uuid.UUID) -> Project:
+    """Create a new project."""
+    # Prepare settings - use provided settings or default
+    settings_dict = (
+        project_in.settings.model_dump() if project_in.settings
+        else ProjectSettings().model_dump()
+    )
+
+    # Create project with settings as dict
+    db_project = Project.model_validate(
+        project_in,
+        update={"created_by_id": owner_id, "settings": settings_dict}
+    )
+    session.add(db_project)
+    session.commit()
+    session.refresh(db_project)
+    return db_project

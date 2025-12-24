@@ -44,6 +44,7 @@ class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
     items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
+    projects: list["Project"] = Relationship(back_populates="created_by", cascade_delete=True)
 
 
 # Properties to return via API, id is always required
@@ -111,3 +112,58 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+# Import Project models
+from app.models.project import (  # noqa: E402
+    Project,
+    ProjectCreate,
+    ProjectPublic,
+    ProjectsPublic,
+    ProjectSettings,
+    ProjectUpdate,
+)
+
+# Import Job models
+from app.models.job import (  # noqa: E402
+    JobRun,
+    JobStatus,
+    JobStatusResponse,
+    JobsPublic,
+    JobType,
+)
+
+
+__all__ = [
+    "User",
+    "UserBase",
+    "UserCreate",
+    "UserRegister",
+    "UserUpdate",
+    "UserUpdateMe",
+    "UpdatePassword",
+    "UserPublic",
+    "UsersPublic",
+    "Item",
+    "ItemBase",
+    "ItemCreate",
+    "ItemUpdate",
+    "ItemPublic",
+    "ItemsPublic",
+    "Message",
+    "Token",
+    "TokenPayload",
+    "NewPassword",
+    "Project",
+    "ProjectCreate",
+    "ProjectPublic",
+    "ProjectsPublic",
+    "ProjectSettings",
+    "ProjectUpdate",
+    "JobRun",
+    "JobStatus",
+    "JobStatusResponse",
+    "JobsPublic",
+    "JobType",
+    "SQLModel",
+]
