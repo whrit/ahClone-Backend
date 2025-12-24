@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import audits, gsc, integrations, items, jobs, links, login, private, projects, serp, users, utils
+from app.api.routes import ads, audits, gsc, integrations, items, jobs, links, login, private, projects, serp, traffic, users, utils
 from app.core.config import settings
 
 api_router = APIRouter()
@@ -15,6 +15,8 @@ api_router.include_router(integrations.router)
 api_router.include_router(gsc.router)
 api_router.include_router(serp.router)
 api_router.include_router(links.router)
+api_router.include_router(traffic.router)
+api_router.include_router(ads.router)
 
 
 if settings.ENVIRONMENT == "local":

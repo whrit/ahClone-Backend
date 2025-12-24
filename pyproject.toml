@@ -28,6 +28,7 @@ dependencies = [
     "redis>=7.1.0",
     "cryptography>=46.0.3",
     "warcio>=1.7.5",
+    "google-ads>=28.4.1",
 ]
 
 [dependency-groups]

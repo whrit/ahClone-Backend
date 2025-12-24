@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/integrations/google/callback"
     TOKEN_ENCRYPTION_KEY: str = ""  # 32-byte Fernet key for encrypting OAuth tokens
 
+    # Google Ads API Configuration
+    GOOGLE_ADS_DEVELOPER_TOKEN: str = ""
+
     # SERP API Configuration (optional)
     SERP_API_KEY: str = ""
     SERP_API_URL: str = "https://serpapi.com/search"

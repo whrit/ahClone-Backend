@@ -214,6 +214,22 @@ from app.models.links import (  # noqa: E402
     RefDomainsResponse,
 )
 
+# Import Ads models
+from app.models.ads import (  # noqa: E402
+    AdsAccount,
+    AdsCampaignDaily,
+    AdsKeywordDaily,
+    CampaignRow,
+    CampaignsResponse,
+    OverlapResponse,
+    OverlapRow,
+    PaidKeywordRow,
+    TrafficDaily,
+    TrafficPanelResponse,
+    TrafficPanelRow,
+    TransparencyCreative,
+)
+
 
 __all__ = [
     "User",
@@ -307,5 +323,17 @@ __all__ = [
     "OverlapResponse",
     "IntersectDomain",
     "IntersectResponse",
+    "AdsAccount",
+    "AdsCampaignDaily",
+    "AdsKeywordDaily",
+    "TransparencyCreative",
+    "TrafficDaily",
+    "CampaignRow",
+    "CampaignsResponse",
+    "PaidKeywordRow",
+    "OverlapRow",
+    "OverlapResponse",
+    "TrafficPanelRow",
+    "TrafficPanelResponse",
     "SQLModel",
 ]

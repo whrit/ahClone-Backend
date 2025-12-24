@@ -14,6 +14,7 @@ from app.models.serp import KeywordTarget, RankObservation, SerpSnapshot
 from app.models.links import AnchorAgg, BacklinkEdge, LinkSnapshot, RefDomainAgg
 from app.models.gsc import GSCQueryDaily, GSCPageDaily, KeywordClusterMember, KeywordCluster, GSCProperty
 from app.models.audit import AuditIssue, AuditLinkEdge, CrawledPage, AuditRun
+from app.models.ads import AdsAccount, AdsCampaignDaily, AdsKeywordDaily, TransparencyCreative, TrafficDaily
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
 
@@ -51,6 +52,11 @@ def _db_session() -> Generator[Session, None, None]:
         session.exec(delete(AuditLinkEdge))
         session.exec(delete(CrawledPage))
         session.exec(delete(AuditRun))
+        session.exec(delete(AdsCampaignDaily))
+        session.exec(delete(AdsKeywordDaily))
+        session.exec(delete(TrafficDaily))
+        session.exec(delete(AdsAccount))
+        session.exec(delete(TransparencyCreative))
         session.exec(delete(JobRun))
         session.exec(delete(IntegrationAccount))
         session.exec(delete(Project))
@@ -91,6 +97,13 @@ def db(_db_session: Session) -> Generator[Session, None, None]:
     _db_session.exec(delete(AuditLinkEdge))
     _db_session.exec(delete(CrawledPage))
     _db_session.exec(delete(AuditRun))
+
+    # Ads tables
+    _db_session.exec(delete(AdsCampaignDaily))
+    _db_session.exec(delete(AdsKeywordDaily))
+    _db_session.exec(delete(TrafficDaily))
+    _db_session.exec(delete(AdsAccount))
+    _db_session.exec(delete(TransparencyCreative))
 
     # Other tables
     _db_session.exec(delete(JobRun))
