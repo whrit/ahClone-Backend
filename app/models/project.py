@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import HttpUrl, field_validator
 from sqlalchemy import JSON, Column
@@ -10,6 +12,7 @@ if TYPE_CHECKING:
     from app.models import User
     from app.models.audit import AuditRun
     from app.models.gsc import GSCProperty
+    from app.models.serp import KeywordTarget
 
 
 # ProjectSettings - embedded settings (stored as JSON in the database)
@@ -91,15 +94,17 @@ class Project(ProjectBase, table=True):
     last_ppc_sync_at: datetime | None = Field(default=None)
 
     # Relationships
-    created_by: "User" = Relationship(back_populates="projects")
-    audit_runs: list["AuditRun"] = Relationship(
+    created_by: User = Relationship(back_populates="projects")
+    audit_runs: list[AuditRun] = Relationship(
         back_populates="project",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    gsc_property: Optional["GSCProperty"] = Relationship(
+    gsc_property: GSCProperty | None = Relationship(
         back_populates="project",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "uselist": False}
     )
+    # Note: keyword_targets relationship removed to avoid circular dependency
+    # Access keyword targets via: session.exec(select(KeywordTarget).where(KeywordTarget.project_id == project.id))
 
 
 # Properties to return via API, id is always required

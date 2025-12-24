@@ -105,6 +105,14 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/integrations/google/callback"
     TOKEN_ENCRYPTION_KEY: str = ""  # 32-byte Fernet key for encrypting OAuth tokens
 
+    # SERP API Configuration (optional)
+    SERP_API_KEY: str = ""
+    SERP_API_URL: str = "https://serpapi.com/search"
+
+    # SERP Limits
+    MAX_KEYWORDS_PER_PROJECT: int = 500
+    SERP_REFRESH_DAILY_CAP: int = 100
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = (

@@ -175,6 +175,25 @@ from app.models.integration import (  # noqa: E402
     IntegrationAccount,
 )
 
+# Import SERP models
+from app.models.serp import (  # noqa: E402
+    DeviceType,
+    KeywordTarget,
+    KeywordTargetCreate,
+    KeywordTargetPublic,
+    KeywordTargetsPublic,
+    ObservationStatus,
+    RankHistoryResponse,
+    RankObservation,
+    RankObservationPublic,
+    RefreshFrequency,
+    RefreshStatus,
+    SearchEngine,
+    SerpResultPublic,
+    SerpSnapshot,
+    SerpSnapshotPublic,
+)
+
 
 __all__ = [
     "User",
@@ -237,5 +256,20 @@ __all__ = [
     "KeywordClusterMember",
     "ClusterPublic",
     "IntegrationAccount",
+    "KeywordTarget",
+    "KeywordTargetCreate",
+    "KeywordTargetPublic",
+    "KeywordTargetsPublic",
+    "RankObservation",
+    "RankObservationPublic",
+    "RankHistoryResponse",
+    "SerpSnapshot",
+    "SerpSnapshotPublic",
+    "SerpResultPublic",
+    "DeviceType",
+    "SearchEngine",
+    "RefreshStatus",
+    "ObservationStatus",
+    "RefreshFrequency",
     "SQLModel",
 ]
