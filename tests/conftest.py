@@ -12,6 +12,8 @@ from app.main import app
 from app.models import IntegrationAccount, Item, JobRun, Project, User
 from app.models.serp import KeywordTarget, RankObservation, SerpSnapshot
 from app.models.links import AnchorAgg, BacklinkEdge, LinkSnapshot, RefDomainAgg
+from app.models.gsc import GSCQueryDaily, GSCPageDaily, KeywordClusterMember, KeywordCluster, GSCProperty
+from app.models.audit import AuditIssue, AuditLinkEdge, CrawledPage, AuditRun
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
 
@@ -26,38 +28,77 @@ def setup_encryption_key() -> Generator[None, None, None]:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def db() -> Generator[Session, None, None]:
+def _db_session() -> Generator[Session, None, None]:
+    """Session-scoped database session for initialization."""
     with Session(engine) as session:
         init_db(session)
         yield session
+        # Final cleanup at end of test session
         # Delete in order to respect foreign key constraints
-        statement = delete(JobRun)
-        session.execute(statement)
-        # Delete SERP models
-        statement = delete(RankObservation)
-        session.execute(statement)
-        statement = delete(SerpSnapshot)
-        session.execute(statement)
-        statement = delete(KeywordTarget)
-        session.execute(statement)
-        # Delete Links models (child tables first due to FK constraints)
-        statement = delete(BacklinkEdge)
-        session.execute(statement)
-        statement = delete(RefDomainAgg)
-        session.execute(statement)
-        statement = delete(AnchorAgg)
-        session.execute(statement)
-        statement = delete(LinkSnapshot)
-        session.execute(statement)
-        statement = delete(Project)
-        session.execute(statement)
-        statement = delete(IntegrationAccount)
-        session.execute(statement)
-        statement = delete(Item)
-        session.execute(statement)
-        statement = delete(User)
-        session.execute(statement)
+        session.exec(delete(BacklinkEdge))
+        session.exec(delete(RefDomainAgg))
+        session.exec(delete(AnchorAgg))
+        session.exec(delete(LinkSnapshot))
+        session.exec(delete(RankObservation))
+        session.exec(delete(SerpSnapshot))
+        session.exec(delete(KeywordTarget))
+        session.exec(delete(GSCQueryDaily))
+        session.exec(delete(GSCPageDaily))
+        session.exec(delete(KeywordClusterMember))
+        session.exec(delete(KeywordCluster))
+        session.exec(delete(GSCProperty))
+        session.exec(delete(AuditIssue))
+        session.exec(delete(AuditLinkEdge))
+        session.exec(delete(CrawledPage))
+        session.exec(delete(AuditRun))
+        session.exec(delete(JobRun))
+        session.exec(delete(IntegrationAccount))
+        session.exec(delete(Project))
+        session.exec(delete(Item))
+        session.exec(delete(User))
         session.commit()
+
+
+@pytest.fixture(scope="function")
+def db(_db_session: Session) -> Generator[Session, None, None]:
+    """Function-scoped database session that cleans up all tables after each test."""
+    yield _db_session
+
+    # Rollback any pending transaction (in case test left session in bad state)
+    _db_session.rollback()
+
+    # Cleanup all tables after each test (child tables first to respect FK constraints)
+    # Links tables
+    _db_session.exec(delete(BacklinkEdge))
+    _db_session.exec(delete(RefDomainAgg))
+    _db_session.exec(delete(AnchorAgg))
+    _db_session.exec(delete(LinkSnapshot))
+
+    # SERP tables
+    _db_session.exec(delete(RankObservation))
+    _db_session.exec(delete(SerpSnapshot))
+    _db_session.exec(delete(KeywordTarget))
+
+    # GSC tables
+    _db_session.exec(delete(GSCQueryDaily))
+    _db_session.exec(delete(GSCPageDaily))
+    _db_session.exec(delete(KeywordClusterMember))
+    _db_session.exec(delete(KeywordCluster))
+    _db_session.exec(delete(GSCProperty))
+
+    # Audit tables
+    _db_session.exec(delete(AuditIssue))
+    _db_session.exec(delete(AuditLinkEdge))
+    _db_session.exec(delete(CrawledPage))
+    _db_session.exec(delete(AuditRun))
+
+    # Other tables
+    _db_session.exec(delete(JobRun))
+    _db_session.exec(delete(IntegrationAccount))
+    _db_session.exec(delete(Project))
+    _db_session.exec(delete(Item))
+
+    _db_session.commit()
 
 
 @pytest.fixture(scope="module")
@@ -72,14 +113,14 @@ def superuser_token_headers(client: TestClient) -> dict[str, str]:
 
 
 @pytest.fixture(scope="module")
-def normal_user_token_headers(client: TestClient, db: Session) -> dict[str, str]:
+def normal_user_token_headers(client: TestClient, _db_session: Session) -> dict[str, str]:
     return authentication_token_from_email(
-        client=client, email=settings.EMAIL_TEST_USER, db=db
+        client=client, email=settings.EMAIL_TEST_USER, db=_db_session
     )
 
 
 @pytest.fixture(scope="module")
-def normal_user(db: Session) -> User:
-    user = crud.get_user_by_email(session=db, email=settings.EMAIL_TEST_USER)
+def normal_user(_db_session: Session) -> User:
+    user = crud.get_user_by_email(session=_db_session, email=settings.EMAIL_TEST_USER)
     assert user is not None
     return user
