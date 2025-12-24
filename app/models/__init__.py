@@ -192,6 +192,7 @@ from app.models.serp import (  # noqa: E402
     SerpResultPublic,
     SerpSnapshot,
     SerpSnapshotPublic,
+    SerpSnapshotsPublic,
 )
 
 # Import Links models
@@ -301,6 +302,7 @@ __all__ = [
     "RankHistoryResponse",
     "SerpSnapshot",
     "SerpSnapshotPublic",
+    "SerpSnapshotsPublic",
     "SerpResultPublic",
     "DeviceType",
     "SearchEngine",

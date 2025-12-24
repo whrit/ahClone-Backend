@@ -13,6 +13,8 @@ from app.core.cache import cached, invalidate_gsc_cache
 from app.core.oauth.google import GoogleOAuthClient
 from app.core.rate_limit import limiter, strict_limit
 from app.models.gsc import (
+    ClusterDetailPublic,
+    ClusterMemberPublic,
     ClusterPublic,
     GSCPageDaily,
     GSCPageRow,
@@ -23,6 +25,7 @@ from app.models.gsc import (
     GSCQueryDaily,
     GSCQueryRow,
     KeywordCluster,
+    KeywordClusterMember,
     OpportunitiesResponse,
     OpportunityRow,
 )
@@ -785,3 +788,96 @@ def generate_clusters(
         message="Cluster generation task queued",
         task_id=task.id,
     )
+
+
+@router.get("/clusters/{cluster_id}", response_model=ClusterDetailPublic)
+def get_cluster_detail(
+    session: SessionDep,
+    current_user: CurrentUser,
+    project_id: uuid.UUID,
+    cluster_id: uuid.UUID,
+    period_days: int = Query(default=28, ge=1, le=90),
+) -> ClusterDetailPublic:
+    """
+    Get cluster details with member queries.
+
+    Returns a specific cluster with its member queries and their metrics.
+
+    Args:
+        session: Database session
+        current_user: Current authenticated user
+        project_id: Project UUID
+        cluster_id: Cluster UUID
+        period_days: Number of days to aggregate metrics (1-90)
+
+    Returns:
+        ClusterDetailPublic with cluster info and member queries with metrics
+
+    Raises:
+        HTTPException: If cluster not found or user lacks permissions
+    """
+    # Verify user has access to project
+    get_project_or_404(session, project_id, current_user)
+
+    # Get cluster and verify it belongs to this project
+    cluster = session.get(KeywordCluster, cluster_id)
+    if not cluster:
+        raise HTTPException(status_code=404, detail="Cluster not found")
+
+    if cluster.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Cluster not found")
+
+    # Calculate date range for metrics
+    end_date = date.today() - timedelta(days=3)  # GSC data has ~3 day delay
+    start_date = end_date - timedelta(days=period_days - 1)
+
+    # Get cluster members with their metrics
+    members_data = []
+    for member in cluster.members:
+        # Build aggregation query for this member's metrics
+        total_clicks: Any = func.sum(GSCQueryDaily.clicks)
+        total_impressions: Any = func.sum(GSCQueryDaily.impressions)
+        avg_ctr: Any = func.avg(GSCQueryDaily.ctr)
+        avg_position: Any = func.avg(GSCQueryDaily.position)
+
+        metrics_stmt = (
+            select(  # type: ignore[call-overload]
+                total_clicks,
+                total_impressions,
+                avg_ctr,
+                avg_position,
+            )
+            .where(GSCQueryDaily.project_id == project_id)
+            .where(GSCQueryDaily.query == member.query)
+            .where(GSCQueryDaily.date >= start_date)
+            .where(GSCQueryDaily.date <= end_date)
+        )
+
+        result = session.exec(metrics_stmt).first()
+
+        # Build member public model
+        member_public = ClusterMemberPublic(
+            query=member.query,
+            weight=member.weight,
+            clicks=int(result[0]) if result and result[0] is not None else 0,
+            impressions=int(result[1]) if result and result[1] is not None else 0,
+            ctr=float(result[2]) if result and result[2] is not None else 0.0,
+            position=float(result[3]) if result and result[3] is not None else 0.0,
+        )
+        members_data.append(member_public)
+
+    # Build cluster detail response
+    cluster_detail = ClusterDetailPublic(
+        id=cluster.id,
+        project_id=cluster.project_id,
+        label=cluster.label,
+        algorithm=cluster.algorithm,
+        created_at=cluster.created_at,
+        total_clicks=cluster.total_clicks,
+        total_impressions=cluster.total_impressions,
+        avg_position=cluster.avg_position,
+        query_count=cluster.query_count,
+        members=members_data,
+    )
+
+    return cluster_detail

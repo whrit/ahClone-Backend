@@ -237,3 +237,27 @@ class ClusterPublic(SQLModel):
     total_impressions: int
     avg_position: float
     query_count: int
+
+
+class ClusterMemberPublic(SQLModel):
+    """Public schema for a cluster member query with metrics."""
+    query: str
+    weight: float
+    clicks: int
+    impressions: int
+    ctr: float
+    position: float
+
+
+class ClusterDetailPublic(SQLModel):
+    """Public schema for cluster details with member queries."""
+    id: uuid.UUID
+    project_id: uuid.UUID
+    label: str
+    algorithm: str
+    created_at: datetime
+    total_clicks: int
+    total_impressions: int
+    avg_position: float
+    query_count: int
+    members: list[ClusterMemberPublic]

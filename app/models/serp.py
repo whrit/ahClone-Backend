@@ -257,3 +257,9 @@ class SerpSnapshotPublic(SQLModel):
     captured_at: datetime
     results: list[SerpResultPublic]
     total_results: int | None
+
+
+class SerpSnapshotsPublic(SQLModel):
+    """Schema for returning multiple SERP snapshots."""
+    data: list[SerpSnapshotPublic]
+    count: int

@@ -19,6 +19,7 @@ from app.models import (
     SerpResultPublic,
     SerpSnapshot,
     SerpSnapshotPublic,
+    SerpSnapshotsPublic,
 )
 from app.services.serp.providers import provider_registry
 from app.services.serp.tracker import RankTracker
@@ -321,6 +322,161 @@ def get_serp_snapshot(
     snapshot = session.get(SerpSnapshot, snapshot_id)
     if not snapshot or snapshot.keyword_target_id != keyword_id:
         raise HTTPException(status_code=404, detail="Snapshot not found")
+
+    # Convert snapshot to public model
+    results = []
+    organic_results = snapshot.results_json.get("organic", [])
+
+    for result in organic_results:
+        results.append(
+            SerpResultPublic(
+                position=result.get("position", 0),
+                url=result.get("url", ""),
+                domain=result.get("domain", ""),
+                title=result.get("title", ""),
+                snippet=result.get("snippet", ""),
+                displayed_url=result.get("displayed_url"),
+            )
+        )
+
+    return SerpSnapshotPublic(
+        id=snapshot.id,
+        keyword_target_id=snapshot.keyword_target_id,
+        captured_at=snapshot.captured_at,
+        results=results,
+        total_results=snapshot.total_results,
+    )
+
+
+@router.get("/keywords/{keyword_id}", response_model=KeywordTargetPublic)
+def get_keyword(
+    session: SessionDep,
+    current_user: CurrentUser,
+    project_id: uuid.UUID,
+    keyword_id: uuid.UUID,
+) -> KeywordTarget:
+    """
+    Get single keyword details.
+
+    Returns full KeywordTarget data including latest position and metadata.
+    """
+    # Verify project exists and user has access
+    get_project_or_404(session, project_id, current_user)
+
+    # Get keyword and verify it belongs to this project
+    keyword = session.get(KeywordTarget, keyword_id)
+    if not keyword or keyword.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Keyword not found")
+
+    return keyword
+
+
+@router.get("/keywords/{keyword_id}/snapshots", response_model=SerpSnapshotsPublic)
+def list_keyword_snapshots(
+    session: SessionDep,
+    current_user: CurrentUser,
+    project_id: uuid.UUID,
+    keyword_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 100,
+) -> SerpSnapshotsPublic:
+    """
+    List snapshots for a keyword with pagination.
+
+    Query parameters:
+    - skip: Number of records to skip (default: 0)
+    - limit: Max number of records to return (default: 100)
+
+    Returns snapshots ordered by captured_at descending (newest first).
+    """
+    # Verify project exists and user has access
+    get_project_or_404(session, project_id, current_user)
+
+    # Get keyword and verify it belongs to this project
+    keyword = session.get(KeywordTarget, keyword_id)
+    if not keyword or keyword.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Keyword not found")
+
+    # Count total snapshots
+    count_statement = (
+        select(func.count())
+        .select_from(SerpSnapshot)
+        .where(SerpSnapshot.keyword_target_id == keyword_id)
+    )
+    count = session.exec(count_statement).one()
+
+    # Get snapshots with pagination, ordered by captured_at descending
+    statement = (
+        select(SerpSnapshot)
+        .where(SerpSnapshot.keyword_target_id == keyword_id)
+        .order_by(SerpSnapshot.captured_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    snapshots = session.exec(statement).all()
+
+    # Convert to public models
+    public_snapshots = []
+    for snapshot in snapshots:
+        results = []
+        organic_results = snapshot.results_json.get("organic", [])
+
+        for result in organic_results:
+            results.append(
+                SerpResultPublic(
+                    position=result.get("position", 0),
+                    url=result.get("url", ""),
+                    domain=result.get("domain", ""),
+                    title=result.get("title", ""),
+                    snippet=result.get("snippet", ""),
+                    displayed_url=result.get("displayed_url"),
+                )
+            )
+
+        public_snapshots.append(
+            SerpSnapshotPublic(
+                id=snapshot.id,
+                keyword_target_id=snapshot.keyword_target_id,
+                captured_at=snapshot.captured_at,
+                results=results,
+                total_results=snapshot.total_results,
+            )
+        )
+
+    return SerpSnapshotsPublic(data=public_snapshots, count=count)
+
+
+@router.get("/keywords/{keyword_id}/snapshots/latest", response_model=SerpSnapshotPublic)
+def get_latest_snapshot(
+    session: SessionDep,
+    current_user: CurrentUser,
+    project_id: uuid.UUID,
+    keyword_id: uuid.UUID,
+) -> SerpSnapshotPublic:
+    """
+    Get latest snapshot for a keyword.
+
+    Returns the most recent SERP snapshot ordered by captured_at.
+    """
+    # Verify project exists and user has access
+    get_project_or_404(session, project_id, current_user)
+
+    # Get keyword and verify it belongs to this project
+    keyword = session.get(KeywordTarget, keyword_id)
+    if not keyword or keyword.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Keyword not found")
+
+    # Get latest snapshot
+    statement = (
+        select(SerpSnapshot)
+        .where(SerpSnapshot.keyword_target_id == keyword_id)
+        .order_by(SerpSnapshot.captured_at.desc())
+        .limit(1)
+    )
+    snapshot = session.exec(statement).first()
+
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="No snapshots found for this keyword")
 
     # Convert snapshot to public model
     results = []

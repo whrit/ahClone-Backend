@@ -213,3 +213,22 @@ class ProviderRegistry:
             )
 
         return providers
+
+    @classmethod
+    def create_instance(cls, provider_key: str) -> SerpProvider:
+        """
+        Create an instance of a provider by its key.
+
+        Args:
+            provider_key: The unique key of the provider
+
+        Returns:
+            An instance of the provider
+
+        Raises:
+            ValueError: If provider_key is not found in registry
+        """
+        provider_class = cls._providers.get(provider_key)
+        if provider_class is None:
+            raise ValueError(f"Provider '{provider_key}' not found in registry")
+        return provider_class()

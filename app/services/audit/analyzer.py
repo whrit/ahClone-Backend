@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Generator
 from urllib.parse import urlparse
 
-from app.models.audit import CrawledPage, IssueSeverity, IssueType
+from app.models.audit import CrawledPage, IssueSeverity, IssueType, ISSUE_SEVERITY_MAP
 
 
 @dataclass
@@ -83,7 +83,7 @@ class IssueAnalyzer:
                 yield DetectedIssue(
                     page_url=page.url,
                     issue_type=IssueType.REDIRECT_CHAIN,
-                    severity=IssueSeverity.CRITICAL,
+                    severity=ISSUE_SEVERITY_MAP[IssueType.REDIRECT_CHAIN],
                     details={
                         "chain_length": len(redirect_urls),
                         "chain": redirect_urls,
@@ -134,14 +134,14 @@ class IssueAnalyzer:
             yield DetectedIssue(
                 page_url=page.url,
                 issue_type=IssueType.TITLE_TOO_SHORT,
-                severity=IssueSeverity.MEDIUM,
+                severity=ISSUE_SEVERITY_MAP[IssueType.TITLE_TOO_SHORT],
                 details={"length": len(title), "title": title},
             )
         elif len(title) > self.TITLE_MAX_LENGTH:
             yield DetectedIssue(
                 page_url=page.url,
                 issue_type=IssueType.TITLE_TOO_LONG,
-                severity=IssueSeverity.MEDIUM,
+                severity=ISSUE_SEVERITY_MAP[IssueType.TITLE_TOO_LONG],
                 details={"length": len(title), "title": title},
             )
 
@@ -157,14 +157,14 @@ class IssueAnalyzer:
             yield DetectedIssue(
                 page_url=page.url,
                 issue_type=IssueType.META_DESC_TOO_SHORT,
-                severity=IssueSeverity.MEDIUM,
+                severity=ISSUE_SEVERITY_MAP[IssueType.META_DESC_TOO_SHORT],
                 details={"length": len(meta_desc)},
             )
         elif len(meta_desc) > self.META_DESC_MAX_LENGTH:
             yield DetectedIssue(
                 page_url=page.url,
                 issue_type=IssueType.META_DESC_TOO_LONG,
-                severity=IssueSeverity.MEDIUM,
+                severity=ISSUE_SEVERITY_MAP[IssueType.META_DESC_TOO_LONG],
                 details={"length": len(meta_desc)},
             )
 
@@ -209,7 +209,7 @@ class IssueAnalyzer:
             yield DetectedIssue(
                 page_url=page.url,
                 issue_type=IssueType.NON_HTTPS,
-                severity=IssueSeverity.MEDIUM,
+                severity=ISSUE_SEVERITY_MAP[IssueType.NON_HTTPS],
                 details={"final_url": page.final_url},
             )
 
@@ -218,7 +218,7 @@ class IssueAnalyzer:
             yield DetectedIssue(
                 page_url=page.url,
                 issue_type=IssueType.THIN_CONTENT,
-                severity=IssueSeverity.LOW,
+                severity=ISSUE_SEVERITY_MAP[IssueType.THIN_CONTENT],
                 details={"word_count": word_count},
             )
 

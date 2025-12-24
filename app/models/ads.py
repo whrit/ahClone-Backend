@@ -12,10 +12,13 @@ Database tables:
 import uuid
 from datetime import date as date_type
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import JSON, Column, DateTime, Index
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from app.models.project import Project
 
 # ==================== Database Table Models ====================
 
@@ -49,6 +52,9 @@ class AdsAccount(SQLModel, table=True):
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
     sync_status: str = Field(default="pending", max_length=50)
+
+    # Relationships
+    project: "Project" = Relationship(back_populates="ads_account")
 
 
 class AdsCampaignDaily(SQLModel, table=True):

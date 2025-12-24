@@ -9,6 +9,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from app.models import User
+    from app.models.ads import AdsAccount
     from app.models.audit import AuditRun
     from app.models.gsc import GSCProperty
     from app.models.serp import KeywordTarget
@@ -102,6 +103,7 @@ class Project(ProjectBase, table=True):
         back_populates="project",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "uselist": False}
     )
+    ads_account: "AdsAccount | None" = Relationship(back_populates="project")
     # Note: keyword_targets relationship removed to avoid circular dependency
     # Access keyword targets via: session.exec(select(KeywordTarget).where(KeywordTarget.project_id == project.id))
 
