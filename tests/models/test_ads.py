@@ -707,14 +707,22 @@ class TestAPIResponseModels:
             organic_clicks=100,
             paid_clicks=50,
             total_clicks=150,
+            paid_cost_micros=50_000_000,  # $50 in micros
+            opportunity_score=250.5,
+            overlap_type="both",
         )
         assert row.keyword == "seo tools"
         assert row.organic_position == 5.5
         assert row.paid_position == 2.0
         assert row.total_clicks == 150
+        assert row.paid_cost_micros == 50_000_000
+        assert row.opportunity_score == 250.5
+        assert row.overlap_type == "both"
 
     def test_overlap_response_creation(self):
         """Test OverlapResponse response model."""
+        from app.models.ads import OverlapSummary
+
         rows = [
             OverlapRow(
                 keyword="seo tools",
@@ -723,6 +731,9 @@ class TestAPIResponseModels:
                 organic_clicks=100,
                 paid_clicks=50,
                 total_clicks=150,
+                paid_cost_micros=50_000_000,
+                opportunity_score=250.5,
+                overlap_type="both",
             ),
             OverlapRow(
                 keyword="analytics platform",
@@ -731,11 +742,23 @@ class TestAPIResponseModels:
                 organic_clicks=80,
                 paid_clicks=40,
                 total_clicks=120,
+                paid_cost_micros=30_000_000,
+                opportunity_score=150.0,
+                overlap_type="paid_only",
             ),
         ]
-        response = OverlapResponse(data=rows, total=2)
+        summary = OverlapSummary(
+            total_keywords=2,
+            overlap_count=1,
+            paid_only_count=1,
+            organic_only_count=0,
+        )
+        response = OverlapResponse(data=rows, total=2, summary=summary)
         assert len(response.data) == 2
         assert response.total == 2
+        assert response.summary.total_keywords == 2
+        assert response.summary.overlap_count == 1
+        assert response.summary.paid_only_count == 1
 
     def test_traffic_panel_row_creation(self):
         """Test TrafficPanelRow response model."""

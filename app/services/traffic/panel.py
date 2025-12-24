@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 from sqlmodel import Session, func, select
 
-from app.models.ads import TrafficDaily
+from app.models.ads import AdsCampaignDaily, TrafficDaily
 from app.models.gsc import GSCQueryDaily
 
 
@@ -55,6 +55,7 @@ class TrafficPanelService:
         ga4_data = self._get_ga4_data(project_id, start_date, end_date)
         gsc_clicks = self._get_gsc_clicks(project_id, start_date, end_date)
         crux_data = self._get_crux_data(project_id, start_date, end_date)
+        paid_clicks = self._get_paid_clicks(project_id, start_date, end_date)
 
         # Generate date range and combine data
         result = []
@@ -67,6 +68,7 @@ class TrafficPanelService:
                 "ga4_users": None,
                 "ga4_pageviews": None,
                 "gsc_clicks": None,
+                "paid_clicks": None,
                 "lcp": None,
                 "cls": None,
             }
@@ -81,6 +83,10 @@ class TrafficPanelService:
             # Add GSC clicks if available
             if current_date in gsc_clicks:
                 row["gsc_clicks"] = gsc_clicks[current_date]
+
+            # Add paid clicks if available
+            if current_date in paid_clicks:
+                row["paid_clicks"] = paid_clicks[current_date]
 
             # Add CrUX data if available
             if current_date in crux_data:
@@ -163,6 +169,45 @@ class TrafficPanelService:
         results = self.session.exec(statement).all()
 
         # Build dict of date -> total clicks
+        clicks_dict = {}
+        for row in results:
+            clicks_dict[row.date] = row.total_clicks
+
+        return clicks_dict
+
+    def _get_paid_clicks(
+        self,
+        project_id: uuid.UUID,
+        start_date: date,
+        end_date: date
+    ) -> dict[date, int]:
+        """
+        Get paid clicks by date from AdsCampaignDaily (sum of clicks per date).
+
+        Args:
+            project_id: Project UUID
+            start_date: Start date (inclusive)
+            end_date: End date (inclusive)
+
+        Returns:
+            Dict mapping date to total paid clicks
+        """
+        statement = (
+            select(
+                AdsCampaignDaily.date,
+                func.sum(AdsCampaignDaily.clicks).label("total_clicks")
+            )
+            .where(
+                AdsCampaignDaily.project_id == project_id,
+                AdsCampaignDaily.date >= start_date,
+                AdsCampaignDaily.date <= end_date
+            )
+            .group_by(AdsCampaignDaily.date)
+        )
+
+        results = self.session.exec(statement).all()
+
+        # Build dict of date -> total paid clicks
         clicks_dict = {}
         for row in results:
             clicks_dict[row.date] = row.total_clicks

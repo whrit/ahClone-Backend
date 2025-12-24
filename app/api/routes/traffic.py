@@ -106,7 +106,7 @@ def get_traffic_panel(
             bounce_rate=None,  # Not currently tracked
             avg_session_duration=None,  # Not currently tracked
             organic_clicks=row.get("gsc_clicks"),
-            paid_clicks=None,  # TODO: Add paid clicks from AdsCampaignDaily
+            paid_clicks=row.get("paid_clicks"),
         )
         for row in panel_data
     ]

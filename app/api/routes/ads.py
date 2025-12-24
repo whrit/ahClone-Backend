@@ -18,6 +18,7 @@ from app.models.ads import (
     CampaignsResponse,
     OverlapResponse,
     OverlapRow,
+    OverlapSummary,
     PaidKeywordRow,
 )
 from app.models.integration import IntegrationAccount
@@ -496,6 +497,7 @@ def get_seo_overlap(
     current_user: CurrentUser,
     project_id: uuid.UUID,
     period_days: int = Query(default=28, ge=1, le=90),
+    overlap_type: str | None = Query(default=None, pattern="^(both|paid_only|organic_only)$"),
 ) -> OverlapResponse:
     """
     Get SEO + PPC overlap analysis.
@@ -507,9 +509,10 @@ def get_seo_overlap(
         current_user: Current authenticated user
         project_id: Project UUID
         period_days: Number of days to analyze (1-90, default 28)
+        overlap_type: Filter by overlap type: "both", "paid_only", or "organic_only"
 
     Returns:
-        OverlapResponse with keyword overlap data
+        OverlapResponse with keyword overlap data and summary statistics
     """
     # Verify user has access to project
     get_project_or_404(session, project_id, current_user)
@@ -526,11 +529,25 @@ def get_seo_overlap(
         period_days=period_days,
     )
 
+    # Apply overlap_type filter if specified
+    if overlap_type:
+        overlap_results = [r for r in overlap_results if r.overlap_type == overlap_type]
+
+    # Initialize summary counters
+    summary_counts = {
+        "both": 0,
+        "paid_only": 0,
+        "organic_only": 0,
+    }
+
     # Convert to response model
     # Note: We need to compute paid_position from the keyword data
     # For simplicity, we'll use a weighted average based on impressions
     data = []
     for result in overlap_results:
+        # Count for summary
+        summary_counts[result.overlap_type] += 1
+
         # Calculate paid position (simplified - using inverse of CTR as proxy)
         # In a real implementation, you'd track actual ad position
         paid_position = 0.0
@@ -540,6 +557,9 @@ def get_seo_overlap(
             # This is a rough approximation
             paid_position = max(1.0, 10.0 - (result.paid_cpc / 1.0))
 
+        # Convert cost from dollars to micros
+        paid_cost_micros = int(result.paid_cost * 1_000_000)
+
         overlap_row = OverlapRow(
             keyword=result.keyword,
             organic_position=result.organic_position,
@@ -547,7 +567,18 @@ def get_seo_overlap(
             organic_clicks=result.organic_clicks,
             paid_clicks=result.paid_clicks,
             total_clicks=result.organic_clicks + result.paid_clicks,
+            paid_cost_micros=paid_cost_micros,
+            opportunity_score=result.opportunity_score,
+            overlap_type=result.overlap_type,
         )
         data.append(overlap_row)
 
-    return OverlapResponse(data=data, total=len(data))
+    # Build summary
+    summary = OverlapSummary(
+        total_keywords=len(data),
+        overlap_count=summary_counts["both"],
+        paid_only_count=summary_counts["paid_only"],
+        organic_only_count=summary_counts["organic_only"],
+    )
+
+    return OverlapResponse(data=data, total=len(data), summary=summary)

@@ -103,7 +103,7 @@ class Project(ProjectBase, table=True):
         back_populates="project",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "uselist": False}
     )
-    ads_account: "AdsAccount | None" = Relationship(back_populates="project")
+    ads_account: "AdsAccount" = Relationship(back_populates="project")
     # Note: keyword_targets relationship removed to avoid circular dependency
     # Access keyword targets via: session.exec(select(KeywordTarget).where(KeywordTarget.project_id == project.id))
 

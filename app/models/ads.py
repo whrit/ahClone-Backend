@@ -247,6 +247,18 @@ class OverlapRow(SQLModel):
     organic_clicks: int
     paid_clicks: int
     total_clicks: int
+    paid_cost_micros: int
+    opportunity_score: float
+    overlap_type: str
+
+
+class OverlapSummary(SQLModel):
+    """Summary statistics for keyword overlap analysis."""
+
+    total_keywords: int
+    overlap_count: int
+    paid_only_count: int
+    organic_only_count: int
 
 
 class OverlapResponse(SQLModel):
@@ -254,6 +266,7 @@ class OverlapResponse(SQLModel):
 
     data: list[OverlapRow]
     total: int
+    summary: OverlapSummary
 
 
 class TrafficPanelRow(SQLModel):
