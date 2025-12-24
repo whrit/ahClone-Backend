@@ -194,6 +194,26 @@ from app.models.serp import (  # noqa: E402
     SerpSnapshotPublic,
 )
 
+# Import Links models
+from app.models.links import (  # noqa: E402
+    AnchorAgg,
+    AnchorRow,
+    AnchorsResponse,
+    BacklinkEdge,
+    BacklinkRow,
+    BacklinksResponse,
+    IntersectDomain,
+    IntersectResponse,
+    LinkSnapshot,
+    NewLostLink,
+    NewLostResponse,
+    OverlapDomain,
+    OverlapResponse,
+    RefDomainAgg,
+    RefDomainRow,
+    RefDomainsResponse,
+)
+
 
 __all__ = [
     "User",
@@ -271,5 +291,21 @@ __all__ = [
     "RefreshStatus",
     "ObservationStatus",
     "RefreshFrequency",
+    "LinkSnapshot",
+    "BacklinkEdge",
+    "RefDomainAgg",
+    "AnchorAgg",
+    "RefDomainRow",
+    "RefDomainsResponse",
+    "BacklinkRow",
+    "BacklinksResponse",
+    "AnchorRow",
+    "AnchorsResponse",
+    "NewLostLink",
+    "NewLostResponse",
+    "OverlapDomain",
+    "OverlapResponse",
+    "IntersectDomain",
+    "IntersectResponse",
     "SQLModel",
 ]

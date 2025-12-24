@@ -11,6 +11,7 @@ from app.core.db import engine, init_db
 from app.main import app
 from app.models import IntegrationAccount, Item, JobRun, Project, User
 from app.models.serp import KeywordTarget, RankObservation, SerpSnapshot
+from app.models.links import AnchorAgg, BacklinkEdge, LinkSnapshot, RefDomainAgg
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
 
@@ -38,6 +39,15 @@ def db() -> Generator[Session, None, None]:
         statement = delete(SerpSnapshot)
         session.execute(statement)
         statement = delete(KeywordTarget)
+        session.execute(statement)
+        # Delete Links models (child tables first due to FK constraints)
+        statement = delete(BacklinkEdge)
+        session.execute(statement)
+        statement = delete(RefDomainAgg)
+        session.execute(statement)
+        statement = delete(AnchorAgg)
+        session.execute(statement)
+        statement = delete(LinkSnapshot)
         session.execute(statement)
         statement = delete(Project)
         session.execute(statement)
